@@ -70,6 +70,10 @@ class AlertSystemAgent(mesa.Agent):
         self.events: list[dict] = []
         self.n_delivered = 0
         self.street_safe = self._nearest_safe_per_street()
+        width = max(1, max((len(x) for x in serve), default=1))
+        self.serve_idx = np.array([x + [0] * (width - len(x)) for x in serve], dtype=int).reshape(nS, width)
+        self.serve_ok = np.array([[j < len(x) for j in range(width)] for x in serve], dtype=bool).reshape(nS, width)
+        self.served = [i for i, x in enumerate(serve) if x]
         # S1 state
         self.gauge_node = self._gauge_node()
         self.s1_publish_t: int | None = None
@@ -120,6 +124,8 @@ class AlertSystemAgent(mesa.Agent):
         t = m.t
         rain = m.rain(t)
         sensors = m.sensors
+        self.levels = np.array([s.level for s in sensors])
+        self.slopes = np.array([s.slope for s in sensors])
         for k, s in enumerate(sensors):
             self.sensor_ttf[k] = time_to_flood(s.level if not np.isnan(s.level) else 0.0, self.critical, s.slope,
                                                rain, self.th.heavy_rain_mm_hr, self.th.heavy_rain_rate_multiplier)
@@ -144,37 +150,36 @@ class AlertSystemAgent(mesa.Agent):
             self._send(int(sid), Level.ACT, residents, generic=True)
 
     def _step_sensors(self, t: int, rain: float):
+        """Vectorised over streets: each street looks at its (up to 2) serving sensors."""
         m = self.model
         th = self.th
-        sensors = m.sensors
+        idx, ok = self.serve_idx, self.serve_ok
+        level = np.where(ok, self.levels[idx], np.nan)
+        slope = np.where(ok, self.slopes[idx], np.nan)
+        fill = np.minimum(level / m.cfg.hydro.drain_depth_m, 1.0)
+        ttf = np.where(ok, self.sensor_ttf[idx], np.inf)
         warning = m.storm.warning_min is not None and t >= m.storm.warning_min
-        for sid, serving in enumerate(self.serve):
-            if not serving:
-                continue
-            ss = [sensors[k] for k in serving]
-            levels = np.array([s.level for s in ss])
-            slopes = np.array([s.slope for s in ss])
-            fills = np.array([s.fill for s in ss])
-            valid = ~np.isnan(slopes)
-            self.falling[sid] = self.falling[sid] + 1 if valid.any() and (slopes[valid] < 0).all() else 0
 
-            proposed = Level.NONE
-            if warning or np.any((fills > th.watch_drain_frac) & (slopes > th.watch_rate_m_per_min)):
-                proposed = Level.WATCH
-            ttf = min(self.sensor_ttf[k] for k in serving)
-            if self.scenario == "S2":
-                if np.nanmax(np.append(fills, -1)) > th.s2_fixed_threshold:
-                    proposed = Level.ACT
-            else:
-                k_best = serving[int(np.argmin([self.sensor_ttf[k] for k in serving]))]
-                others_rising = any(sensors[k].slope > th.rising_confirm_m_per_min for k in serving if k != k_best)
-                if ttf < th.act_ttf_min and (others_rising or rain > th.rain_confirm_mm_hr):
-                    proposed = Level.ACT
-            if np.nanmax(np.append(levels, -1)) >= self.avoid_level:
-                proposed = Level.AVOID
+        valid = ~np.isnan(slope)
+        falling_now = valid.any(axis=1) & np.all(~valid | (slope < 0), axis=1)
+        self.falling = np.where(falling_now, self.falling + 1, 0)
 
-            for lvl in self.fsm[sid].update(t, proposed, self.falling[sid]):
+        proposed = np.zeros(len(idx), dtype=int)
+        watch = warning | np.any((fill > th.watch_drain_frac) & (slope > th.watch_rate_m_per_min), axis=1)
+        proposed[watch] = Level.WATCH
+        ttf_min = ttf.min(axis=1)
+        if self.scenario == "S2":
+            act = np.any(fill > th.s2_fixed_threshold, axis=1)
+        else:
+            best = np.argmin(ttf, axis=1)
+            rising = (slope > th.rising_confirm_m_per_min) & (np.arange(idx.shape[1]) != best[:, None])
+            act = (ttf_min < th.act_ttf_min) & (rising.any(axis=1) | (rain > th.rain_confirm_mm_hr))
+        proposed[act] = Level.ACT
+        proposed[np.any(level >= self.avoid_level, axis=1)] = Level.AVOID
+
+        for sid in self.served:
+            for lvl in self.fsm[sid].update(t, Level(proposed[sid]), self.falling[sid]):
                 if lvl == Level.ACT and np.isnan(self.first_act[sid]):
                     self.first_act[sid] = t
-                self._send(sid, lvl, m.residents_by_street.get(sid, []),
-                           mins=ttf if self.scenario == "S3" else None)
+                self._send(int(sid), lvl, m.residents_by_street.get(int(sid), []),
+                           mins=ttf_min[sid] if self.scenario == "S3" else None)

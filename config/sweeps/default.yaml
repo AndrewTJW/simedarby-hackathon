@@ -1,0 +1,9 @@
+# Monte Carlo sweep grid (plan §0). S0 and S1 do not use street sensors, so they are run once per
+# (compliance, storm, seed) and reported against every sensor count.
+world: toy
+storms: [toy_storm]
+scenarios: [S0, S1, S2, S3]
+n_sensors: [5, 10, 20, 40]
+compliance: [0.3, 0.5, 0.8]
+n_runs: 100          # Monte Carlo runs per cell (seeds 0..n_runs-1)
+overrides: {}        # dotted config overrides applied to every run, e.g. {"thresholds.s2_fixed_threshold": 0.8}

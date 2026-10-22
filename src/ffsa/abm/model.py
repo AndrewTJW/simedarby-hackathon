@@ -37,6 +37,7 @@ class FloodModel(mesa.Model):
         self._route_cache: dict[bytes, dict] = {}
         self._blocked_key = b""
         self._edges = world.edge_by_eid()
+        self._edge_geom: dict[int, tuple] = {}
 
         # sensors (placement is deterministic except for the random strategy)
         sc = cfg.sensors
@@ -51,6 +52,8 @@ class FloodModel(mesa.Model):
             self.residents_by_street.setdefault(r.street, []).append(r)
 
         self.alerts = AlertSystemAgent(self, scenario, self.serve)
+        self._park_cells = np.array([r.park_cell for r in self.residents], dtype=np.int64)
+        self._wake_depth = min(cfg.residents.self_notice_depth_m, cfg.thresholds.car_float_m)
         self.timeline: list[dict] = []
 
     # --- setup ---------------------------------------------------------------------------------
@@ -93,6 +96,22 @@ class FloodModel(mesa.Model):
         p = self._route_cache[key].get(node)
         return None if p is None else p[::-1]
 
+    def point_on_edge(self, eid: int, from_node, dist: float) -> tuple[float, float]:
+        """(x, y) at `dist` metres along edge `eid`, travelling away from `from_node`."""
+        if eid not in self._edge_geom:
+            u, _, d = self._edges[eid]
+            pts = np.asarray(d["coords"], dtype=float)
+            nu = self.world.graph.nodes[u]
+            if np.hypot(pts[0, 0] - nu["x"], pts[0, 1] - nu["y"]) > np.hypot(pts[-1, 0] - nu["x"], pts[-1, 1] - nu["y"]):
+                pts = pts[::-1]  # make coords run from u
+            cum = np.concatenate([[0.0], np.cumsum(np.hypot(*np.diff(pts, axis=0).T))])
+            self._edge_geom[eid] = (u, pts, cum)
+        u, pts, cum = self._edge_geom[eid]
+        if from_node != u:
+            dist = cum[-1] - dist
+        f = np.clip(dist / max(cum[-1], 1e-9), 0, 1) * cum[-1]
+        return float(np.interp(f, cum, pts[:, 0])), float(np.interp(f, cum, pts[:, 1]))
+
     # --- simulation ----------------------------------------------------------------------------
     def step(self):
         t = self.t
@@ -100,7 +119,12 @@ class FloodModel(mesa.Model):
         for s in self.sensors:
             s.step()
         self.alerts.step()
-        self.agents_by_type[ResidentAgent].shuffle_do("step")
+        # only residents who can do something this tick: busy ones, or home with water at the door
+        busy = [r for r in self.residents if r.status in ("waiting", "driving", "stranded")]
+        wet = np.flatnonzero(self.depth_flat[t, self._park_cells] >= self._wake_depth)
+        active = busy + [self.residents[i] for i in wet if self.residents[i].status == "home"]
+        for k in self.rng.permutation(len(active)):
+            active[k].step()
         if self.record:
             self._record(t)
         self.t += 1

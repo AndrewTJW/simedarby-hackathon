@@ -1,0 +1,36 @@
+# Study area: Bandar Bukit Raja (BBR), Klang.
+name: bbr
+place_query: "Bandar Bukit Raja, Klang, Selangor"
+
+# TEAM DECISION (OPEN_QUESTIONS #1): bbox [west, south, east, north] in EPSG:4326.
+# Proposed = the OSM boundary of "Bandar Bukit Raja, Klang City, Klang, Selangor, Malaysia"
+# (Nominatim, fetched 2026-10-23) plus a ~300 m margin. Confirm it covers Jalan Makyong and the
+# reported flood streets after looking at results/phase3_overlay.png.
+bbox: [101.4093, 3.0732, 101.4714, 3.1143]
+bbox_confirmed: false
+bbox_source: "OSM Nominatim boundary for Bandar Bukit Raja + ~300 m margin (proposal, awaiting team confirmation)"
+
+crs: "EPSG:3168"
+dem:
+  url: "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_N03_00_E101_00_DEM/Copernicus_DSM_COG_10_N03_00_E101_00_DEM.tif"
+  source: "Copernicus GLO-30 DEM (ESA / Airbus, 2021), open AWS bucket, no login"
+
+# Outlet: surface water leaves through boundary cells whose elevation is in the lowest `outlet_percentile`
+# of boundary elevations (toward Sungai Puloh). Assumption until the team confirms the outflow side.
+outlet_percentile: 10
+
+# Upstream inflow from Setia Alam (plan §4.5, optional). Off until the team decides.
+upstream_inflow: null
+
+# TEAM DECISION (OPEN_QUESTIONS #4): named safe car parks. Each: {name, lon, lat, source}.
+# OSM multi-storey car parks inside the bbox are added automatically.
+safe_car_parks: []
+
+# Also treat the highest road-accessible ground as safe (plan §4.3): top fraction of road nodes by
+# elevation, thinned to at most `max` sites spaced `min_spacing_m` apart.
+high_ground_safe: {top_fraction: 0.10, max: 6, min_spacing_m: 700}
+
+# TEAM DECISION (OPEN_QUESTIONS #7): streets reported flooded, with citations.
+validation_streets:
+  - name: "Jalan Makyong"
+    source: "News reports cited in the proposal: floods ~3 times a year since 2021 (citation to be added by team)"

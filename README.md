@@ -24,6 +24,43 @@ Every Makefile target is also available as `python -m ffsa.cli <target>` (for Wi
 | 0. Scaffold | done |
 | 1. Core formulas | done |
 | 2. Toy world end to end | done |
+| 3. Real BBR data | code done; **waiting for team to confirm the bbox** (see `docs/OPEN_QUESTIONS.md`) |
+| 4. Real storm + calibration | blocked on rainfall source (OPEN_QUESTIONS #2) |
+| 5. Monte Carlo sweeps | code done, runs on the toy world |
+| 6. Dashboard + alert mock-up | map replay, split S0/S3, KPIs, phone mock-up done; GitHub Pages deploy pending |
+| 7. Figures, docs | figures, `results.html`, auto `ASSUMPTIONS.md` done; README screenshots, `DEMO_SCRIPT.md`, `VALIDATION.md` pending |
+
+## Commands
+
+| Make target | Without make | What it does |
+|---|---|---|
+| `make test` | `python -m pytest -q` | unit + end-to-end tests |
+| `make sim` | `python -m ffsa.cli --allow-placeholders sim [--world bbr --storm <name>]` | S0-S3 once, prints metrics, exports a dashboard replay |
+| `make sweep` | `python -m ffsa.cli --allow-placeholders sweep [-n 30]` | Monte Carlo grid → `results/sweep_*.parquet`, `results/summary_*.csv` |
+| `make figures` | `python -m ffsa.cli figures` | deck figures → `results/figures/` and `dashboard/results.html` |
+| `make data` | `python -m ffsa.cli data` | fetch DEM + OSM for BBR, build `data/processed/world_bbr.pkl`, write `results/phase3_overlay.png` |
+| `make assumptions` | `python -m ffsa.cli assumptions` | regenerate `docs/ASSUMPTIONS.md` from `config/` |
+
+(On Windows use `.venv/Scripts/python`; on macOS/Linux `.venv/bin/python`.)
+
+## How the model works (one paragraph each)
+
+**Water (deterministic, cached per storm).** Rainfall excess per 30 m cell from the MSMA rational
+method (`Q = C·i·A/360`) enters a drain-node network built along roads; nodes drain to the nearest
+lower node and have a capacity scaled by one calibration factor. When drains are full, water stays
+on the surface and is routed cell to cell by a Manning-based diffusive scheme; it leaves at the
+lowest boundary cells. Mass balance is tracked and tested. The result `depth[t, r, c]` and
+`drain_level[t, node]` is cached in `data/cache/`.
+
+**People and alerts (stochastic, Mesa 3 agents).** Sensors read drain level (or road water once the
+drain surcharges) with noise. The alert system runs S0-S3 and a per-street state machine
+(WATCH → ACT → AVOID → ALL CLEAR, no flapping). Residents (one agent per car) are asleep, home or
+away depending on the hour; on ACT they comply with some probability after a lognormal delay and
+drive to the nearest reachable safe car park, re-routing around roads with ≥ 0.3 m of water.
+
+**Never fabricated.** Every parameter in `config/base.yaml` carries a `source` or an `assumption`;
+placeholders stop the run unless `--allow-placeholders` is passed, and every figure and the
+dashboard are stamped when synthetic data or placeholders are used.
 
 ## Toy world (Phase 2)
 
@@ -31,10 +68,6 @@ Every Makefile target is also available as `python -m ffsa.cli <target>` (for Wi
 .venv/Scripts/python -m ffsa.cli --allow-placeholders sim        # S0-S3 on the synthetic toy world
 ```
 
-This runs the cached water model, the four alert scenarios and residents, prints the headline
-metrics, and exports a replay to `dashboard/public/runs/`. Then open `dashboard/index.html`
-directly in Chrome/Edge (no server, no internet needed). `dashboard/alert.html` is the phone
-mock-up; open both and they stay in sync, and "I moved my car" presses show on the map page.
-
-`--allow-placeholders` is required while `damage.per_car_rm` is unsourced; outputs are stamped
-"PLACEHOLDER VALUES".
+Then open `dashboard/index.html` directly in Chrome/Edge (no server, no internet needed).
+`dashboard/alert.html` is the phone mock-up; open both and they stay in sync, and "I moved my car"
+presses show up on the map page. `dashboard/results.html` shows the Monte Carlo figures.

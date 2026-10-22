@@ -29,6 +29,7 @@ class ResidentAgent(mesa.Agent):
         self.pos = 0
         self.progress = 0.0
         self.cur_eid: int | None = None
+        self.cur_from = None                    # node the current edge was entered from
         self.trail: list[list[float]] = []
         self.pressed = False
         self.t_safe: float | None = None
@@ -74,7 +75,7 @@ class ResidentAgent(mesa.Agent):
         m = self.model
         th = m.cfg.thresholds
         G = m.world.graph
-        if self.progress > 0 and m.water.edge_depth[t, self.cur_eid] >= th.car_float_m:
+        if self.progress > 0 and self._depth_here(t) >= th.car_float_m:
             self._flood(t, "flooded_en_route")
             return
         budget = 1.0
@@ -94,7 +95,7 @@ class ResidentAgent(mesa.Agent):
                     return
                 self.path, self.pos = path, 0
                 continue
-            self.cur_eid = e["eid"]
+            self.cur_eid, self.cur_from = e["eid"], node
             deep = m.water.edge_depth[t, e["eid"]] >= th.avoid_m
             speed = (self.rc.slow_speed_kmh if deep else self.rc.drive_speed_kmh) * 1000 / 60  # m/min
             remaining = e["length"] - self.progress
@@ -106,6 +107,14 @@ class ResidentAgent(mesa.Agent):
             else:
                 self.progress += speed * budget
                 budget = 0.0
+                if self._depth_here(t) >= th.car_float_m:
+                    self._flood(t, "flooded_en_route")
+
+    def _depth_here(self, t: int) -> float:
+        """Water depth at the car's position part-way along its current edge."""
+        m = self.model
+        x, y = m.point_on_edge(self.cur_eid, self.cur_from, self.progress)
+        return float(m.depth_flat[t, int(m.world.xy_cell(x, y))])
 
     def _flood(self, t: int, outcome: str):
         self.status, self.outcome, self.t_flooded = "flooded", outcome, t

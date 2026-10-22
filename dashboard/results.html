@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Monte Carlo Results</title>
+  <link rel="stylesheet" href="src/style.css">
+  <style>
+    main { max-width: 1200px; margin: 0 auto; padding: 16px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 520px), 1fr)); gap: 16px; }
+    figure { margin: 0; background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 8px; }
+    figure img { width: 100%; display: block; }
+    .tablewrap { overflow-x: auto; margin-top: 18px; }
+    table { border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; width: 100%; }
+    th, td { border-bottom: 1px solid var(--line); padding: 4px 8px; text-align: right; white-space: nowrap; }
+    th:first-child, td:first-child, th:nth-child(2), td:nth-child(2) { text-align: left; }
+  </style>
+</head>
+<body>
+  <header class="top">
+    <h1>Monte Carlo results</h1>
+    <span id="badges"></span>
+    <nav><a href="index.html">Map replay</a><a href="alert.html">Phone alert</a><a href="results.html">Results</a></nav>
+  </header>
+  <main>
+    <p id="intro" class="muted"></p>
+    <div class="grid" id="figs"></div>
+    <div class="tablewrap"><table id="table"></table></div>
+    <p class="disclaimer">Simulation estimates from a reduced-complexity water model; not a forecast. Advisory layer:
+      complements JPS/NADMA warnings; opt-in only.</p>
+  </main>
+  <script src="public/figures/results.js" onerror="document.getElementById('intro').textContent='No sweep results yet. Run python -m ffsa.cli sweep then python -m ffsa.cli figures.'"></script>
+  <script>
+    (function () {
+      const R = window.FFSA_RESULTS;
+      if (!R) return;
+      const b = [];
+      if (R.world === "toy") b.push('<span class="badge">Toy world (synthetic)</span>');
+      if (R.synthetic_storm) b.push('<span class="badge">Synthetic storm</span>');
+      if (R.placeholders) b.push(`<span class="badge" title="${R.placeholders}">PLACEHOLDER VALUES</span>`);
+      document.getElementById("badges").innerHTML = b.join(" ");
+      document.getElementById("intro").textContent = `World: ${R.world} · storm: ${R.storm} · source: ${R.source}`;
+      document.getElementById("figs").innerHTML = R.figures.map((f) => `<figure><img src="public/figures/${f}.png" alt="${f.replace(/_/g, " ")}"></figure>`).join("");
+      const cols = ["scenario", "storm", "n_sensors", "compliance", "runs", "lead_median_min", "share_lead_ge15", "pct_moved", "pct_moved_p5", "pct_moved_p95", "false_alarm_rate", "msgs_per_resident", "rm_avoided_vs_s0"];
+      const fmt = (v, c) => v == null ? "–" : (typeof v === "number" ? (["pct_moved", "pct_moved_p5", "pct_moved_p95", "false_alarm_rate", "share_lead_ge15"].includes(c) ? (100 * v).toFixed(0) + "%" : (Math.abs(v) >= 1000 ? Math.round(v).toLocaleString() : (+v.toFixed(2)))) : v);
+      document.getElementById("table").innerHTML = "<tr>" + cols.map((c) => `<th>${c.replace(/_/g, " ")}</th>`).join("") + "</tr>" +
+        R.summary.map((r) => "<tr>" + cols.map((c) => `<td>${fmt(r[c], c)}</td>`).join("") + "</tr>").join("");
+    })();
+  </script>
+</body>
+</html>
