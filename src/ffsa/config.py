@@ -85,6 +85,8 @@ class Sensors(_M):
     n_sensors: int
     placement: str
     min_spacing_m: float
+    max_serve_distance_m: float
+    same_elevation_tol_m: float
 
 
 class ResponseDelay(_M):
@@ -95,6 +97,7 @@ class ResponseDelay(_M):
 
 class Residents(_M):
     cars_per_household: float
+    households_per_apartment: int
     max_cars: int
     compliance: float
     response_delay_lognorm: ResponseDelay
@@ -108,7 +111,7 @@ class Residents(_M):
 
 
 class ScenarioS1(_M):
-    gauge_threshold_m: float
+    gauge_threshold_frac: float
     publish_interval_min: int
     dissemination_delay_min: tuple[float, float]
     reach: float

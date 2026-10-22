@@ -52,9 +52,12 @@ sensors:
   n_sensors: {value: 20, source: "Proposal pilot: 20 nodes for < RM10k"}
   placement: {value: "flow_accumulation", assumption: "Default strategy; compared with historical/random in Phase 8"}
   min_spacing_m: {value: 150, assumption: "Spread sensors apart when choosing by flow accumulation"}
+  max_serve_distance_m: {value: 600, assumption: "A sensor only serves streets within 600 m road distance; farther streets are unserved"}
+  same_elevation_tol_m: {value: 0.5, assumption: "Serving sensors must be upstream or within 0.5 m of the street's lowest point"}
 
 residents:
   cars_per_household: {value: 1.5, assumption: "Placeholder until a DOSM household figure is supplied (OPEN_QUESTIONS #6)"}
+  households_per_apartment: {value: 10, assumption: "OSM apartment blocks rarely carry unit counts; 10 households per block as a stand-in"}
   max_cars: {value: 3000, assumption: "Cap on simulated cars for speed; results are shares so they scale"}
   compliance: {value: 0.5, source: "Plan sweep values {0.3, 0.5, 0.8}; 0.5 default"}
   response_delay_lognorm:
@@ -71,7 +74,7 @@ residents:
   p_away_by_hour: {value: [0.03,0.03,0.03,0.03,0.03,0.05,0.15,0.4,0.55,0.55,0.55,0.55,0.5,0.5,0.55,0.55,0.5,0.4,0.3,0.2,0.15,0.1,0.06,0.04], assumption: "Share away from home (at work, out) by hour; cannot move their car"}
 
 scenario_s1:
-  gauge_threshold_m: {value: 0.30, assumption: "Virtual river gauge alert level at the township outlet cell"}
+  gauge_threshold_frac: {value: 0.75, assumption: "Virtual river gauge = fill of the township's outlet drain node (all upstream area); 75% stands in for InfoBanjir's 'Warning' level"}
   publish_interval_min: {value: 15, source: "Public InfoBanjir updates every 15 min (Malay Mail, 2025)"}
   dissemination_delay_min: {value: [15, 45], assumption: "WhatsApp-chain forwarding delay, uniform range"}
   reach: {value: 0.56, source: "Alias et al. (2020): 56% of residents received flood warnings"}

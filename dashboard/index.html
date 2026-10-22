@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Flash-Flood Street Alerts</title>
+  <link rel="stylesheet" href="src/style.css">
+</head>
+<body>
+  <header class="top">
+    <h1>Flash-Flood Street Alerts</h1>
+    <select id="run" aria-label="Run"></select>
+    <span id="badges"></span>
+    <nav><a href="index.html">Map replay</a><a href="alert.html" target="_blank">Phone alert</a><a href="results.html">Results</a></nav>
+  </header>
+
+  <div class="layout">
+    <div class="maps" id="maps">
+      <div class="mapwrap" id="wrapA"><div class="maplabel" id="labelA"></div><div id="mapA" style="position:absolute;inset:0"></div></div>
+      <div class="mapwrap" id="wrapB" hidden><div class="maplabel" id="labelB"></div><div id="mapB" style="position:absolute;inset:0"></div></div>
+      <div class="legend">
+        <span><i class="sw" style="background:#78bef5"></i>water &lt; 0.15 m</span>
+        <span><i class="sw" style="background:var(--watch)"></i>WATCH</span>
+        <span><i class="sw" style="background:#2878e6"></i>water ≥ 0.15 m</span>
+        <span><i class="sw" style="background:var(--act)"></i>ACT</span>
+        <span><i class="sw" style="background:#192896"></i>water ≥ 0.3 m</span>
+        <span><i class="sw" style="background:var(--avoid)"></i>AVOID</span>
+        <span><i class="sw" style="background:#2eb464;border-radius:50%"></i>car safe</span>
+        <span><i class="sw" style="background:var(--clear)"></i>ALL CLEAR</span>
+        <span><i class="sw" style="background:#d62839;border-radius:50%"></i>car flooded</span>
+        <span><i class="sw" style="background:#fff;border:1px solid #888;border-radius:50%"></i>car moving</span>
+      </div>
+    </div>
+
+    <aside class="panel">
+      <div class="kpis" id="kpis"></div>
+      <h2>Sensor</h2>
+      <div id="sensorInfo" class="muted">Click a sensor dot on the map.</div>
+      <canvas class="spark" id="spark" width="600" height="180" hidden></canvas>
+      <h2>Alerts sent</h2>
+      <ul class="feed" id="feed"></ul>
+      <p class="disclaimer">Advisory layer: complements JPS/NADMA warnings; opt-in only. Water is a reduced-complexity
+        simulation, not a hydraulic model. Figures are simulation estimates until a real pilot.</p>
+    </aside>
+  </div>
+
+  <footer class="controls">
+    <button class="primary" id="play">Play</button>
+    <select id="speed" aria-label="Speed">
+      <option value="1">1×</option><option value="15">15×</option><option value="30" selected>30×</option>
+      <option value="60">60×</option><option value="120">120×</option><option value="300">300×</option>
+    </select>
+    <span class="clock" id="clock"></span>
+    <input type="range" id="scrub" min="0" max="479" value="0" aria-label="Time">
+    <select id="scenario" aria-label="Scenario"></select>
+    <label><input type="checkbox" id="split"> Split S0 | S3</label>
+    <label><input type="checkbox" id="basemap"> Online basemap</label>
+  </footer>
+
+  <script src="vendor/deck.gl-9.1.14.min.js"></script>
+  <script src="public/runs/index.js"></script>
+  <script src="src/common.js"></script>
+  <script src="src/map.js"></script>
+</body>
+</html>

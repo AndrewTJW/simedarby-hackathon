@@ -1,14 +1,11 @@
 {
-  "name": "dashboard",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "name": "ffsa-dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Static replay dashboard for Flash-Flood Street Alerts (no build step; opens from disk)",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "vendor": "node scripts/vendor.mjs"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
     "deck.gl": "9.1.14"
   }

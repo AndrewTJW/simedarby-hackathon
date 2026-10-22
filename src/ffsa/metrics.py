@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import numpy as np
 
-OUTCOMES = ("moved_safe", "flooded_parked", "flooded_en_route", "never_at_risk", "not_moved_dry")
+OUTCOMES = ("moved_safe", "flooded_parked", "flooded_en_route", "stranded_dry", "not_moved_dry", "never_at_risk")
 
 
 def first_crossing(series_t_by_x: np.ndarray, threshold: float) -> np.ndarray:

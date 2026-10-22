@@ -23,3 +23,18 @@ Every Makefile target is also available as `python -m ffsa.cli <target>` (for Wi
 |---|---|
 | 0. Scaffold | done |
 | 1. Core formulas | done |
+| 2. Toy world end to end | done |
+
+## Toy world (Phase 2)
+
+```bash
+.venv/Scripts/python -m ffsa.cli --allow-placeholders sim        # S0-S3 on the synthetic toy world
+```
+
+This runs the cached water model, the four alert scenarios and residents, prints the headline
+metrics, and exports a replay to `dashboard/public/runs/`. Then open `dashboard/index.html`
+directly in Chrome/Edge (no server, no internet needed). `dashboard/alert.html` is the phone
+mock-up; open both and they stay in sync, and "I moved my car" presses show on the map page.
+
+`--allow-placeholders` is required while `damage.per_car_rm` is unsourced; outputs are stamped
+"PLACEHOLDER VALUES".
