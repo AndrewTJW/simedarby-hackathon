@@ -1,0 +1,8 @@
+# SYNTHETIC storm for the Phase 2 toy world only. Not a real or design storm.
+name: toy_storm
+synthetic: true
+source: "Synthetic toy hyetograph for pipeline testing (assumption: true)"
+kind: table
+# piecewise-linear (minute, mm/hr) knots, interpolated to 1-minute values
+knots: [[0, 0], [15, 5], [45, 30], [75, 90], [105, 120], [135, 70], [165, 25], [200, 5], [230, 0]]
+thunderstorm_warning_min: 10

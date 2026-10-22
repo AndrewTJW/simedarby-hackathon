@@ -1,0 +1,82 @@
+# All model parameters.
+# Every leaf is {value, source} or {value, assumption}. `docs/ASSUMPTIONS.md` is generated from this file
+# (`python -m ffsa.cli assumptions`). A leaf with `placeholder: true` makes the run fail unless
+# `--allow-placeholders` is passed, in which case outputs are stamped "PLACEHOLDER VALUES".
+
+sim:
+  tick_minutes: {value: 1, assumption: "Model resolution; 1-minute ticks resolve 10-min rate-of-rise fits"}
+  duration_minutes: {value: 480, assumption: "8 h covers a flash-flood storm plus recession"}
+  storm_start_local: {value: "2021-12-17T18:00:00+08:00", source: "Start of the 17-18 Dec 2021 Klang Valley storm (proposal); sets the asleep/away mix"}
+  substeps_per_tick: {value: 6, assumption: "10-s hydraulic sub-steps keep the 30 m surface scheme stable"}
+
+grid:
+  cell_m: {value: 30, source: "Copernicus GLO-30 DEM native resolution (ESA, 2021)"}
+  crs: {value: "EPSG:3168", assumption: "Kertau RSO (metres), national projected CRS for Peninsular Malaysia; used everywhere except dashboard export (EPSG:4326)"}
+
+hydro:
+  runoff_C:
+    road: {value: 0.90, source: "MSMA 2nd ed. (DID, 2012) runoff coefficient table: impervious surfaces 0.90 (table number to be filled in by team)"}
+    roof: {value: 0.90, source: "MSMA 2nd ed. (DID, 2012): roofs 0.90 (table number to be filled in by team)"}
+    residential: {value: 0.70, source: "MSMA 2nd ed. (DID, 2012): residential, medium density ~0.70 (table number to be filled in by team)"}
+    green: {value: 0.30, source: "MSMA 2nd ed. (DID, 2012): open space / grass ~0.30 (table number to be filled in by team)"}
+  manning_n: {value: 0.035, assumption: "Mixed urban surface roughness for overland flow; typical textbook range 0.02-0.05"}
+  drain_node_spacing_m: {value: 80, assumption: "Plan §4.5 suggests 60-100 m manhole/inlet spacing"}
+  drain_design_intensity_mm_hr: {value: 100, assumption: "Minor-system design intensity stand-in until MSMA IDF for Klang is supplied (OPEN_QUESTIONS #3)"}
+  drain_capacity_factor: {value: 0.6, assumption: "Main calibration knob; <1 reflects resident reports of undersized/clogged drains"}
+  drain_storage_seconds: {value: 240, assumption: "Pipe/channel storage expressed as seconds of design flow between nodes"}
+  drain_depth_m: {value: 1.0, assumption: "Typical roadside monsoon drain depth; converts fill % to a water level in metres"}
+  inlet_capacity_factor: {value: 1.5, assumption: "Inlets can admit up to 1.5x pipe design flow when there is spare storage"}
+  road_burn_m: {value: 0.15, assumption: "Road cells lowered so overland flow follows streets (plan §4.2, 0.1-0.2 m)"}
+  outlet_edge: {value: "south", assumption: "Toy world drains to the south edge; BBR outlet set in area_bbr.yaml"}
+
+thresholds:
+  car_float_m: {value: 0.30, source: "US National Weather Service, 'Turn Around Don't Drown' (n.d.): 30 cm of moving water floats most cars"}
+  avoid_m: {value: 0.15, source: "Proposal: half of car_float_m; NWS 15 cm causes loss of control"}
+  watch_drain_frac: {value: 0.50, source: "Proposal alert table: WATCH when drain > 50% full and rising"}
+  watch_rate_m_per_min: {value: 0.01, assumption: "'Rising fast' = > 1 cm/min sustained over the fit window"}
+  act_ttf_min: {value: 30, source: "Proposal alert table: ACT when predicted TTF < 30 min"}
+  rate_window_min: {value: 10, source: "Plan §0: least-squares slope over the last 10 minutes"}
+  all_clear_falling_min: {value: 30, source: "Proposal alert table: ALL CLEAR after 30 min of falling water"}
+  min_hold_min: {value: 10, assumption: "Minimum time a street stays at a level before de-escalating (anti-flapping)"}
+  heavy_rain_mm_hr: {value: 50, assumption: "Above this intensity the TTF rate is multiplied (rain still to arrive in the drain)"}
+  heavy_rain_rate_multiplier: {value: 1.25, assumption: "Simple, explainable boost to rate-of-rise under heavy rain"}
+  rain_confirm_mm_hr: {value: 40, assumption: "S3 second-source confirmation by rainfall; MetMalaysia 'heavy rain' is > 30 mm/h"}
+  rising_confirm_m_per_min: {value: 0.003, assumption: "A confirming sensor counts as rising above 3 mm/min"}
+  s2_fixed_threshold: {value: 0.70, source: "Plan §4.6 sweep values 60/70/80%; 70% default"}
+
+sensors:
+  report_interval_min: {value: 2, assumption: "Within the 1-5 min LoRaWAN reporting range in plan §4.6"}
+  noise_sigma_m: {value: 0.01, assumption: "Ultrasonic level-sensor accuracy ~1 cm; to be cited from UTHM / FloodNet specs"}
+  p_dropout: {value: 0.0, assumption: "No packet loss in the baseline; varied in robustness runs"}
+  p_blocked: {value: 0.0, assumption: "No stuck sensors in the baseline; varied in robustness runs"}
+  n_sensors: {value: 20, source: "Proposal pilot: 20 nodes for < RM10k"}
+  placement: {value: "flow_accumulation", assumption: "Default strategy; compared with historical/random in Phase 8"}
+  min_spacing_m: {value: 150, assumption: "Spread sensors apart when choosing by flow accumulation"}
+
+residents:
+  cars_per_household: {value: 1.5, assumption: "Placeholder until a DOSM household figure is supplied (OPEN_QUESTIONS #6)"}
+  max_cars: {value: 3000, assumption: "Cap on simulated cars for speed; results are shares so they scale"}
+  compliance: {value: 0.5, source: "Plan sweep values {0.3, 0.5, 0.8}; 0.5 default"}
+  response_delay_lognorm:
+    awake_median_min: {value: 5, assumption: "Median time to get keys and reach the car when awake"}
+    asleep_median_min: {value: 12, assumption: "Median time when woken by a phone alert"}
+    sigma: {value: 0.6, assumption: "Lognormal spread of response delays"}
+  s1_search_delay_min: {value: 10, assumption: "Extra time to decide where to go when the message names no car park (S1)"}
+  drive_speed_kmh: {value: 20, assumption: "Cautious driving in heavy rain on residential streets"}
+  slow_speed_kmh: {value: 5, assumption: "Speed on edges with >= avoid_m of water"}
+  p_button: {value: 0.7, assumption: "Share of movers who press 'I moved my car'"}
+  self_notice_depth_m: {value: 0.10, assumption: "S0: residents notice water at their door at 10 cm"}
+  # Probability of state by local hour (0-23). Remainder is home_awake.
+  p_asleep_by_hour: {value: [0.9,0.92,0.93,0.93,0.9,0.7,0.35,0.1,0.05,0.03,0.02,0.02,0.02,0.03,0.03,0.03,0.03,0.03,0.03,0.05,0.08,0.15,0.35,0.65], assumption: "Typical sleep schedule; swept in sensitivity tests"}
+  p_away_by_hour: {value: [0.03,0.03,0.03,0.03,0.03,0.05,0.15,0.4,0.55,0.55,0.55,0.55,0.5,0.5,0.55,0.55,0.5,0.4,0.3,0.2,0.15,0.1,0.06,0.04], assumption: "Share away from home (at work, out) by hour; cannot move their car"}
+
+scenario_s1:
+  gauge_threshold_m: {value: 0.30, assumption: "Virtual river gauge alert level at the township outlet cell"}
+  publish_interval_min: {value: 15, source: "Public InfoBanjir updates every 15 min (Malay Mail, 2025)"}
+  dissemination_delay_min: {value: [15, 45], assumption: "WhatsApp-chain forwarding delay, uniform range"}
+  reach: {value: 0.56, source: "Alias et al. (2020): 56% of residents received flood warnings"}
+
+damage:
+  per_car_rm: {value: 20000, placeholder: true, assumption: "PLACEHOLDER. Must be sourced, e.g. DOSM 2021 vehicle loss RM1.0 bn / cited count of affected vehicles (OPEN_QUESTIONS #5)"}
+  partial_damage_depth_m: {value: 0.30, assumption: "Step depth-damage curve: no damage below car_float_m, full per-car cost at/above it"}
+  pilot_cost_rm: {value: 10000, source: "Proposal: < RM10k for a 20-node pilot"}

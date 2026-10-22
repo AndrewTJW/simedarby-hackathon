@@ -1,0 +1,14 @@
+# SYNTHETIC design storm. The dashboard labels any storm with synthetic: true as "Synthetic design storm".
+# IDF form (MSMA 2nd ed., DID 2012): i = lambda * T^kappa / (d + theta)^eta, i in mm/hr, T in years, d in hours.
+# The coefficients below are PLACEHOLDERS, not the Klang station values. Replace them (OPEN_QUESTIONS #3).
+name: design_storm_PLACEHOLDER
+synthetic: true
+source: "PLACEHOLDER IDF coefficients (assumption) — replace with MSMA 2nd ed. values for the nearest Klang station"
+kind: design
+idf: {lambda: 65.0, kappa: 0.17, theta: 0.25, eta: 0.85}
+ari_years: 50
+duration_min: 180
+pattern: chicago        # peaked (Chicago-style) temporal pattern, assumption
+peak_position: 0.4      # fraction of duration at which intensity peaks, assumption
+start_offset_min: 20    # dry minutes before rain begins
+thunderstorm_warning_min: 0   # time (sim minute) a thunderstorm warning is issued, or null

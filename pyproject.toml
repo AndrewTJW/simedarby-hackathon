@@ -1,0 +1,31 @@
+[project]
+name = "ffsa"
+version = "0.1.0"
+description = "Flash-Flood Street Alerts: agent-based prototype for Bandar Bukit Raja (SDP Hackathon 2026)"
+requires-python = ">=3.11"
+dependencies = [
+  "mesa>=3.1,<4",
+  "numpy>=1.26",
+  "scipy>=1.11",
+  "pandas>=2.1",
+  "pyarrow>=14",
+  "pydantic>=2.5",
+  "pyyaml>=6",
+  "joblib>=1.3",
+  "matplotlib>=3.8",
+  "networkx>=3.2",
+]
+
+[project.optional-dependencies]
+geo = ["osmnx>=2.0,<3", "geopandas>=0.14", "shapely>=2.0", "rasterio>=1.3", "pyproj>=3.6"]
+dev = ["pytest>=8"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
