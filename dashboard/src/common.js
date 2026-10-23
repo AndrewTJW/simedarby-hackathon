@@ -58,12 +58,21 @@
   /* Position of a car at time t, and its status. */
   FF.carState = function (car, t) {
     if (car.t_flooded != null && t >= car.t_flooded) return { status: "flooded", pos: FF.carPos(car, car.t_flooded) };
-    if (car.t_safe != null && t >= car.t_safe) return { status: "safe", pos: FF.carPos(car, t) };
+    if (car.t_safe != null && t >= car.t_safe) return { status: "safe", pos: FF.safeSpot(car) };
     const p = car.path;
     if (!p.length || t < p[0][2]) return { status: "parked", pos: car.home };
     const last = p[p.length - 1];
     if (t >= last[2]) return { status: car.outcome === "stranded_dry" ? "stranded" : "driving", pos: [last[0], last[1]] };
     return { status: "driving", pos: FF.carPos(car, t) };
+  };
+
+  /* Arrived cars all end on the safe-zone point, under its marker: fan them out in a ring ~40-70 m
+     around it (deterministic per car) so the cars piling up there are visible. */
+  FF.safeSpot = function (car) {
+    const l = car.path[car.path.length - 1];
+    const a = car.id * 2.39996;                        // golden angle
+    const r = 0.00035 + 0.00028 * ((car.id * 0.618034) % 1);  // degrees
+    return [l[0] + r * Math.cos(a), l[1] + r * Math.sin(a)];
   };
 
   FF.carPos = function (car, t) {
