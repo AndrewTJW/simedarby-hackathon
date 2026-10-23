@@ -36,6 +36,7 @@ class FloodModel(mesa.Model):
         self.safe_nodes = {s["node"] for s in world.safe_zones}
         self._route_cache: dict[bytes, dict] = {}
         self._blocked_key = b""
+        self._blocked_key_alerted = b""
         self._edges = world.edge_by_eid()
         self._edge_geom: dict[int, tuple] = {}
 
@@ -85,9 +86,18 @@ class FloodModel(mesa.Model):
         s = self.storm.intensity_mm_hr
         return float(s[t]) if t < len(s) else 0.0
 
-    def route_to_safe(self, node) -> list | None:
-        """Shortest passable path from node to the nearest safe zone, or None. Cached per blocked-edge set."""
-        key = self._blocked_key
+    def route_to_safe(self, node, alerted: bool = False) -> tuple[list | None, bool]:
+        """Shortest passable path from node to the nearest safe zone, or None. Cached per blocked-edge set.
+
+        Alerted drivers avoid roads with >= avoid_m (as the AVOID message tells them) and fall back to the
+        car_float_m rule only when no such route exists. Returns (path, avoids_avoid_m)."""
+        if alerted:
+            path = self._route(node, self._blocked_key_alerted)
+            if path is not None:
+                return path, True
+        return self._route(node, self._blocked_key), False
+
+    def _route(self, node, key: bytes) -> list | None:
         if key not in self._route_cache:
             blocked = np.flatnonzero(np.frombuffer(key, dtype=bool)) if key else []
             G = nx.restricted_view(self.world.graph, [], [self._edges[e][:2] for e in blocked])
@@ -116,6 +126,7 @@ class FloodModel(mesa.Model):
     def step(self):
         t = self.t
         self._blocked_key = (self.water.edge_depth[t] >= self.cfg.thresholds.car_float_m).tobytes()
+        self._blocked_key_alerted = (self.water.edge_depth[t] >= self.cfg.thresholds.avoid_m).tobytes()
         for s in self.sensors:
             s.step()
         self.alerts.step()

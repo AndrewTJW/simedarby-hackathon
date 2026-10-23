@@ -24,6 +24,8 @@ class ResidentAgent(mesa.Agent):
         self.at_risk = bool(model.max_depth_flat[self.park_cell] >= model.cfg.thresholds.car_float_m)
         self.s1_reached = model.rng.random() < model.cfg.scenario_s1.reach
         self.decided = False                    # has already decided whether to comply with an ACT
+        self.street_alerted = False             # got a street-level message (S2/S3), so knows AVOID roads
+        self.route_strict = False               # current route avoids roads with >= avoid_m
         self.depart_t: float | None = None
         self.path: list = []
         self.pos = 0
@@ -49,6 +51,8 @@ class ResidentAgent(mesa.Agent):
 
     def receive(self, level: Level, generic: bool = False, safe: dict | None = None):
         self.n_msgs += 1
+        if not generic:
+            self.street_alerted = True
         if level != Level.ACT or self.decided:
             return
         self.decided = True
@@ -61,7 +65,7 @@ class ResidentAgent(mesa.Agent):
         return n["x"], n["y"]
 
     def _start_driving(self, t: float):
-        path = self.model.route_to_safe(self.home_node)
+        path, self.route_strict = self.model.route_to_safe(self.home_node, self.street_alerted)
         x, y = self.building["x"], self.building["y"]
         self.trail.append([x, y, t])
         if path is None:
@@ -87,8 +91,9 @@ class ResidentAgent(mesa.Agent):
                 return
             nxt = self.path[self.pos + 1]
             e = G.edges[node, nxt]
-            if self.progress == 0 and m.water.edge_depth[t, e["eid"]] >= th.car_float_m:
-                path = m.route_to_safe(node)
+            limit = th.avoid_m if self.route_strict else th.car_float_m
+            if self.progress == 0 and m.water.edge_depth[t, e["eid"]] >= limit:
+                path, self.route_strict = m.route_to_safe(node, self.street_alerted)
                 if path is None:
                     self.status = "stranded"
                     self.park_cell = G.nodes[node]["cell"]

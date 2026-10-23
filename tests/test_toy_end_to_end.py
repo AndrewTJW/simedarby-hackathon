@@ -49,3 +49,21 @@ def test_reproducible(toy):
     a = run_one(world, storm, water, cfg, "S3", seed=9)[1]
     b = run_one(world, storm, water, cfg, "S3", seed=9)[1]
     assert a == b
+
+
+def test_alerted_drivers_route_around_avoid_roads(toy):
+    """Street-alerted drivers prefer routes with no road >= avoid_m; unalerted ones only avoid >= car_float_m."""
+    cfg, world, storm, water = toy
+    model = run_one(world, storm, water, cfg, "S2", seed=1)[0]
+    th = cfg.thresholds
+    t = int(np.argmax((water.edge_depth >= th.avoid_m).sum(axis=1)))  # tick with most roads at AVOID depth
+    model._blocked_key = (water.edge_depth[t] >= th.car_float_m).tobytes()
+    model._blocked_key_alerted = (water.edge_depth[t] >= th.avoid_m).tobytes()
+    eid = {(u, v): d["eid"] for u, v, d in world.graph.edges(data=True)}
+    for node in list(world.graph.nodes)[::7]:
+        path, strict = model.route_to_safe(node, alerted=True)
+        if path is None:
+            continue
+        depths = [water.edge_depth[t, eid.get((a, b), eid.get((b, a)))] for a, b in zip(path, path[1:])]
+        assert all(d < (th.avoid_m if strict else th.car_float_m) for d in depths)
+        assert model.route_to_safe(node, alerted=False)[0] is not None
