@@ -22,6 +22,7 @@ def _with_retry(fn, tries_per_mirror: int = 2):
     wait, last = 10, None
     for url in OVERPASS_MIRRORS:
         ox.settings.overpass_url = url
+        ox.settings.requests_timeout = 120
         for _ in range(tries_per_mirror):
             try:
                 return fn()
@@ -35,8 +36,14 @@ def _with_retry(fn, tries_per_mirror: int = 2):
     raise RuntimeError(f"All Overpass mirrors failed: {last}")
 
 
+OPTIONAL = {"landuse", "parking"}
+
+
 def fetch_osm(bbox: list[float]) -> dict[str, Path]:
-    """bbox = [west, south, east, north]. Saves raw layers (EPSG:4326) under data/raw/."""
+    """bbox = [west, south, east, north]. Saves raw layers (EPSG:4326) under data/raw/.
+
+    Roads and buildings are required. Land use and car parks are optional: if Overpass is unreachable
+    they are skipped (returned as None) and re-fetched on the next run."""
     import osmnx as ox
 
     RAW.mkdir(parents=True, exist_ok=True)
@@ -52,21 +59,36 @@ def fetch_osm(bbox: list[float]) -> dict[str, Path]:
         ox.save_graphml(G, paths["roads"])
     layers = {
         "buildings": {"building": True},
-        "landuse": {"landuse": True, "leisure": ["park", "pitch", "garden", "recreation_ground"], "natural": ["wood", "scrub", "grassland", "water", "wetland"]},
+        # one key per query: the combined query times out on the public Overpass servers
+        "landuse": [{"landuse": True}, {"leisure": ["park", "pitch", "garden", "recreation_ground"]},
+                    {"natural": ["wood", "scrub", "grassland", "water", "wetland"]}],
         "parking": {"amenity": "parking"},
     }
     for name, tags in layers.items():
         if paths[name].exists():
             continue
-        try:
-            gdf = _with_retry(lambda: ox.features_from_bbox(box, tags=tags))
-        except ox._errors.InsufficientResponseError:
-            gdf = None
-        if gdf is None or gdf.empty:
-            import geopandas as gpd
+        import geopandas as gpd
+        import pandas as pd
 
+        parts = []
+        for t in tags if isinstance(tags, list) else [tags]:
+            try:
+                parts.append(_with_retry(lambda: ox.features_from_bbox(box, tags=t)).reset_index())
+            except ox._errors.InsufficientResponseError:
+                pass
+            except RuntimeError:
+                if name not in OPTIONAL:
+                    raise
+                print(f"  WARNING: could not fetch optional OSM layer '{name}'; continuing without it")
+                parts = None
+                break
+        if parts is None:
+            paths[name] = None
+            continue
+        if parts:
+            gdf = gpd.GeoDataFrame(pd.concat(parts, ignore_index=True), crs="EPSG:4326")
+        else:
             gdf = gpd.GeoDataFrame({"geometry": []}, crs="EPSG:4326")
-        gdf = gdf.reset_index()
         keep = [c for c in ("element", "id", "building", "landuse", "leisure", "natural", "amenity", "parking", "name", "geometry") if c in gdf.columns]
         gdf = gdf[keep]
         gdf = gdf[gdf.geometry.geom_type.isin(["Polygon", "MultiPolygon", "Point"])]

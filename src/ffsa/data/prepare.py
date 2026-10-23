@@ -172,8 +172,10 @@ def prepare_area(area_path, allow_placeholders: bool = False) -> World:
 
     bld = gpd.read_file(osm["buildings"]).to_crs(crs)
     bld = bld[bld.geometry.geom_type.isin(["Polygon", "MultiPolygon"])]
-    lu = gpd.read_file(osm["landuse"]).to_crs(crs)
-    parking = gpd.read_file(osm["parking"]).to_crs(crs)
+    empty = gpd.GeoDataFrame({"geometry": []}, crs=crs)
+    missing = [k for k in ("landuse", "parking") if osm[k] is None]
+    lu = gpd.read_file(osm["landuse"]).to_crs(crs) if osm["landuse"] else empty
+    parking = gpd.read_file(osm["parking"]).to_crs(crs) if osm["parking"] else empty
     bmask = rasterize(bld.geometry, x0, y0, H, W, cell)
     dem = clean_dem(dem_raw, bmask)
 
@@ -251,7 +253,11 @@ def prepare_area(area_path, allow_placeholders: bool = False) -> World:
     world.validation_streets = [v["name"] for v in area.get("validation_streets", [])]
     world.drains, world.cell_node = build_drains(world, cfg)
     world.meta = {"bbox": area["bbox"], "bbox_confirmed": bool(area.get("bbox_confirmed")),
-                  "dem_source": area["dem"]["source"], "osm": "OpenStreetMap contributors (ODbL), fetched via OSMnx"}
+                  "dem_source": area["dem"]["source"], "osm": "OpenStreetMap contributors (ODbL), fetched via OSMnx",
+                  "missing_osm_layers": missing}
+    if missing:
+        print(f"WARNING: built without OSM layers {missing}: land cover defaults to residential (C=0.7) there, "
+              "and no OSM multi-storey car parks. Re-run `ffsa.cli data` when Overpass is reachable.")
     path = world.save()
     report(world, dem_raw)
     overlay_png(world, ROOT / "results" / "phase3_overlay.png")
