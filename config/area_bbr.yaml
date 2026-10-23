@@ -30,6 +30,11 @@ safe_car_parks: []
 # elevation, thinned to at most `max` sites spaced `min_spacing_m` apart.
 high_ground_safe: {top_fraction: 0.10, max: 6, min_spacing_m: 700}
 
+# SYNTHETIC safe car parks (team decision 2026-10-23: no real car-park list yet, so stand-ins are assumed).
+# In each tile_m square, the highest road node above the tile's median ground level becomes
+# "Assumed car park N (synthetic)". Replace with real named car parks in `safe_car_parks` when available.
+synthetic_car_parks: {tile_m: 1500, min_spacing_m: 700}
+
 # TEAM DECISION (OPEN_QUESTIONS #7): streets reported flooded, with citations.
 validation_streets:
   - name: "Jalan Makyong"

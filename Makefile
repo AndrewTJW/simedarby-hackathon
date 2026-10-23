@@ -19,10 +19,10 @@ test:
 	$(PY) -m pytest -q
 
 sim:
-	$(PY) -m ffsa.cli sim --world $(WORLD)
+	$(PY) -m ffsa.cli --allow-placeholders sim --world $(WORLD)
 
 sweep:
-	$(PY) -m ffsa.cli sweep --world $(WORLD)
+	$(PY) -m ffsa.cli --allow-placeholders sweep --world $(WORLD) --jobs 2
 
 export:
 	$(PY) -m ffsa.cli export --world $(WORLD)

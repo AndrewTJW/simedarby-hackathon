@@ -4,7 +4,7 @@ from __future__ import annotations
 import networkx as nx
 import numpy as np
 
-from ffsa.world import World, assign_to_edges
+from ffsa.world import World, assign_to_edges, is_validation_street
 
 
 def _spread(order: np.ndarray, xy: np.ndarray, k: int, min_spacing: float, chosen: list[int] | None = None) -> list[int]:
@@ -24,16 +24,23 @@ def _spread(order: np.ndarray, xy: np.ndarray, k: int, min_spacing: float, chose
     return chosen
 
 
-def place_sensors(world: World, k: int, strategy: str, rng: np.random.Generator, min_spacing: float) -> list[int]:
+def place_sensors(world: World, k: int, strategy: str, rng: np.random.Generator, min_spacing: float,
+                  low_point_window_m: float = 300.0) -> list[int]:
     """Return k drain-node indices."""
     dr = world.drains
     xy = np.column_stack(world.cell_xy(dr.cell))
     by_flow = np.argsort(-dr.upstream_cells, kind="stable")
     if strategy == "flow_accumulation":
         return _spread(by_flow, xy, k, min_spacing)
+    if strategy == "low_points":
+        # terrain only: how far each node sits below the mean ground level around it (sags, dips, underpasses)
+        from scipy.ndimage import uniform_filter
+
+        size = max(3, int(round(low_point_window_m / world.cell_m)) | 1)
+        relief = uniform_filter(world.dem.astype(float), size=size, mode="nearest").ravel() - world.dem.ravel()
+        return _spread(np.lexsort((-dr.upstream_cells, -relief[dr.cell])), xy, k, min_spacing)
     if strategy == "historical":
-        names = set(world.validation_streets)
-        cells = [c for s in world.streets if s["name"] in names for c in s["cells"]]
+        cells = [c for s in world.streets if is_validation_street(s["name"], world.validation_streets) for c in s["cells"]]
         seeds = []
         if cells:
             sx, sy = world.cell_xy(np.asarray(cells))

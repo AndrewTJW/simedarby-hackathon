@@ -50,13 +50,15 @@ sensors:
   p_dropout: {value: 0.0, assumption: "No packet loss in the baseline; varied in robustness runs"}
   p_blocked: {value: 0.0, assumption: "No stuck sensors in the baseline; varied in robustness runs"}
   n_sensors: {value: 20, source: "Proposal pilot: 20 nodes for < RM10k"}
-  placement: {value: "flow_accumulation", assumption: "Default strategy; compared with historical/random in Phase 8"}
+  placement: {value: "low_points", assumption: "Team decision 2026-10-23: drains at terrain low points (sags, dips, underpasses), where street water collects first; trunk drains (flow_accumulation) never filled on the real BBR map. Compared with flow_accumulation/historical/random in Phase 8"}
+  low_point_window_m: {value: 300, assumption: "Neighbourhood used to judge a low point: node ground level vs the mean ground level within a ~300 m square"}
   min_spacing_m: {value: 150, assumption: "Spread sensors apart when choosing by flow accumulation"}
   max_serve_distance_m: {value: 600, assumption: "A sensor only serves streets within 600 m road distance; farther streets are unserved"}
   same_elevation_tol_m: {value: 0.5, assumption: "Serving sensors must be upstream or within 0.5 m of the street's lowest point"}
 
 residents:
   cars_per_household: {value: 1.5, assumption: "Placeholder until a DOSM household figure is supplied (OPEN_QUESTIONS #6)"}
+  park_at: {value: "street", assumption: "BBR terraced houses park on the porch / kerb at road level, so a car's water depth is the road cell in front of the house ('building' = the house's own cell)"}
   households_per_apartment: {value: 10, assumption: "OSM apartment blocks rarely carry unit counts; 10 households per block as a stand-in"}
   max_cars: {value: 3000, assumption: "Cap on simulated cars for speed; results are shares so they scale"}
   compliance: {value: 0.5, source: "Plan sweep values {0.3, 0.5, 0.8}; 0.5 default"}

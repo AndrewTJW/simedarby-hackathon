@@ -84,6 +84,7 @@ class Sensors(_M):
     p_blocked: float
     n_sensors: int
     placement: str
+    low_point_window_m: float
     min_spacing_m: float
     max_serve_distance_m: float
     same_elevation_tol_m: float
@@ -97,6 +98,7 @@ class ResponseDelay(_M):
 
 class Residents(_M):
     cars_per_household: float
+    park_at: str
     households_per_apartment: int
     max_cars: int
     compliance: float

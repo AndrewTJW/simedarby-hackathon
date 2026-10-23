@@ -24,11 +24,11 @@ Every Makefile target is also available as `python -m ffsa.cli <target>` (for Wi
 | 0. Scaffold | done |
 | 1. Core formulas | done |
 | 2. Toy world end to end | done |
-| 3. Real BBR data | code done; **waiting for team to confirm the bbox** (see `docs/OPEN_QUESTIONS.md`) |
-| 4. Real storm + calibration | blocked on rainfall source (OPEN_QUESTIONS #2) |
-| 5. Monte Carlo sweeps | code done, runs on the toy world |
+| 3. Real BBR data | done (built without OSM land use / car parks, Overpass was down); bbox still to be confirmed by the team |
+| 4. Real storm + calibration | runs on a **synthetic** design storm (team decision); `docs/VALIDATION.md` reports 0/20 Jalan Makyong hits |
+| 5. Monte Carlo sweeps | code done; toy world swept; BBR sweep skipped for now (`config/sweeps/bbr.yaml`) |
 | 6. Dashboard + alert mock-up | map replay, split S0/S3, KPIs, phone mock-up done; GitHub Pages deploy pending |
-| 7. Figures, docs | figures, `results.html`, auto `ASSUMPTIONS.md` done; README screenshots, `DEMO_SCRIPT.md`, `VALIDATION.md` pending |
+| 7. Figures, docs | figures (toy), auto `ASSUMPTIONS.md`, `VALIDATION.md`, `DEMO_SCRIPT.md` done; README screenshots pending |
 
 ## Commands
 
@@ -38,7 +38,8 @@ Every Makefile target is also available as `python -m ffsa.cli <target>` (for Wi
 | `make sim` | `python -m ffsa.cli --allow-placeholders sim [--world bbr --storm <name>]` | S0-S3 once, prints metrics, exports a dashboard replay |
 | `make sweep` | `python -m ffsa.cli --allow-placeholders sweep [-n 30]` | Monte Carlo grid → `results/sweep_*.parquet`, `results/summary_*.csv` |
 | `make figures` | `python -m ffsa.cli figures` | deck figures → `results/figures/` and `dashboard/results.html` |
-| `make data` | `python -m ffsa.cli data` | fetch DEM + OSM for BBR, build `data/processed/world_bbr.pkl`, write `results/phase3_overlay.png` |
+| `make data` | `python -m ffsa.cli data [--skip-optional-osm]` | fetch DEM + OSM for BBR, build `data/processed/world_bbr.pkl`, write `results/phase3_overlay.png`; `--skip-optional-osm` skips land use and car parks when Overpass is down |
+| | `python -m ffsa.cli validate` | `docs/VALIDATION.md`: modelled vs reported flood streets |
 | `make assumptions` | `python -m ffsa.cli assumptions` | regenerate `docs/ASSUMPTIONS.md` from `config/` |
 
 (On Windows use `.venv/Scripts/python`; on macOS/Linux `.venv/bin/python`.)
@@ -61,6 +62,17 @@ drive to the nearest reachable safe car park, re-routing around roads with ≥ 0
 **Never fabricated.** Every parameter in `config/base.yaml` carries a `source` or an `assumption`;
 placeholders stop the run unless `--allow-placeholders` is passed, and every figure and the
 dashboard are stamped when synthetic data or placeholders are used.
+
+## Real BBR demo
+
+```bash
+.venv/Scripts/python -m ffsa.cli data --skip-optional-osm            # build the BBR map (~1 min)
+.venv/Scripts/python -m ffsa.cli --allow-placeholders sim --world bbr  # S0-S3 on BBR, synthetic storm
+```
+
+Open `dashboard/index.html` and pick the `bbr` run. See `docs/DEMO_SCRIPT.md` for the 3-minute walkthrough.
+Inputs that are made up are labelled: the storm is synthetic, safe car parks are "Assumed car park N
+(synthetic)", and placeholder values are listed in `docs/ASSUMPTIONS.md`.
 
 ## Toy world (Phase 2)
 

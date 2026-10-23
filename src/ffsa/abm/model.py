@@ -42,7 +42,7 @@ class FloodModel(mesa.Model):
 
         # sensors (placement is deterministic except for the random strategy)
         sc = cfg.sensors
-        nodes = place_sensors(world, sc.n_sensors, sc.placement, self.rng, sc.min_spacing_m)
+        nodes = place_sensors(world, sc.n_sensors, sc.placement, self.rng, sc.min_spacing_m, sc.low_point_window_m)
         self.sensors = [SensorAgent(self, k, n) for k, n in enumerate(nodes)]
         self.serve = serving_sensors(world, nodes, sc.max_serve_distance_m, sc.same_elevation_tol_m)
 

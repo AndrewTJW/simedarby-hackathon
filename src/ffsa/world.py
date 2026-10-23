@@ -133,8 +133,9 @@ def densify(coords, step: float) -> np.ndarray:
     return np.asarray(out)
 
 
-def assign_to_edges(world: World, xs, ys) -> tuple[np.ndarray, np.ndarray]:
-    """For each point, the eid of the closest road edge and the nearer endpoint node of that edge."""
+def assign_to_edges(world: World, xs, ys, return_points: bool = False):
+    """For each point, the eid of the closest road edge and the nearer endpoint node of that edge
+    (and, with `return_points`, the (N, 2) closest point on that edge)."""
     from scipy.spatial import cKDTree
 
     pts, owner = [], []
@@ -143,7 +144,8 @@ def assign_to_edges(world: World, xs, ys) -> tuple[np.ndarray, np.ndarray]:
         p = densify(d["coords"], world.cell_m / 3)
         pts.append(p)
         owner.append(np.full(len(p), eid))
-    tree = cKDTree(np.vstack(pts))
+    pts = np.vstack(pts)
+    tree = cKDTree(pts)
     owner = np.concatenate(owner)
     _, idx = tree.query(np.column_stack([xs, ys]))
     eids = owner[idx]
@@ -154,7 +156,15 @@ def assign_to_edges(world: World, xs, ys) -> tuple[np.ndarray, np.ndarray]:
         du = math.hypot(nu["x"] - xs[i], nu["y"] - ys[i])
         dv = math.hypot(nv["x"] - xs[i], nv["y"] - ys[i])
         nodes[i] = u if du <= dv else v
+    if return_points:
+        return eids, nodes, pts[idx]
     return eids, nodes
+
+
+def is_validation_street(name: str, validation: list[str]) -> bool:
+    """OSM splits a reported street into numbered sections ('Jalan Makyong 1/KU5'), so match by prefix."""
+    n = (name or "").lower()
+    return any(n == v.lower() or n.startswith(v.lower() + " ") for v in validation)
 
 
 def cells_along(world: World, coords) -> np.ndarray:

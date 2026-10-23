@@ -1,0 +1,10 @@
+# Monte Carlo sweep on the real BBR map (plan §0). The storm is SYNTHETIC (team decision 2026-10-23,
+# OPEN_QUESTIONS #2), so every result is stamped synthetic. S0 and S1 do not use street sensors, so they
+# are run once per (compliance, storm, seed) and reported against every sensor count.
+world: bbr
+storms: [design_storm_PLACEHOLDER]
+scenarios: [S0, S1, S2, S3]
+n_sensors: [5, 10, 20, 40]
+compliance: [0.3, 0.5, 0.8]
+n_runs: 100          # Monte Carlo runs per cell (seeds 0..n_runs-1)
+overrides: {}

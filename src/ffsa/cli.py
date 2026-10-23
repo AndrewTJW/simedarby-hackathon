@@ -66,10 +66,16 @@ def cmd_assumptions(args):
     print(write_assumptions())
 
 
+def cmd_validate(args):
+    from ffsa.docs import write_validation
+
+    print(write_validation(args.world, args.storm))
+
+
 def cmd_data(args):
     from ffsa.data.prepare import prepare_area
 
-    prepare_area(args.area, allow_placeholders=args.allow_placeholders)
+    prepare_area(args.area, allow_placeholders=args.allow_placeholders, skip_optional_osm=args.skip_optional_osm)
 
 
 def main(argv=None):
@@ -102,8 +108,15 @@ def main(argv=None):
 
     sub.add_parser("assumptions", help="regenerate docs/ASSUMPTIONS.md").set_defaults(fn=cmd_assumptions)
 
+    s = sub.add_parser("validate", help="docs/VALIDATION.md: modelled vs reported flooded streets")
+    s.add_argument("--world", default="bbr")
+    s.add_argument("--storm", default="design_storm_PLACEHOLDER")
+    s.set_defaults(fn=cmd_validate)
+
     s = sub.add_parser("data", help="fetch and prepare the real study area (Phase 3)")
     s.add_argument("--area", default=str(ROOT / "config" / "area_bbr.yaml"))
+    s.add_argument("--skip-optional-osm", action="store_true",
+                   help="build without OSM land use and car parks (when Overpass is down)")
     s.set_defaults(fn=cmd_data)
 
     args = p.parse_args(argv)

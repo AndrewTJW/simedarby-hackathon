@@ -17,7 +17,8 @@ class ResidentAgent(mesa.Agent):
         self.building = building
         self.street = building["street"]
         self.home_node = building["node"]
-        self.park_cell = building["cell"]
+        # where the car is parked: the road in front of the house (porch / kerb), or the building's own cell
+        self.park_cell = building.get("street_cell", building["cell"]) if cfg.park_at == "street" else building["cell"]
         self.state = state                      # asleep | home_awake | away
         self.status = "home"                    # home | waiting | driving | safe | flooded | stranded
         self.outcome: str | None = None

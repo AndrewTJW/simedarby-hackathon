@@ -22,7 +22,7 @@ def _with_retry(fn, tries_per_mirror: int = 2):
     wait, last = 10, None
     for url in OVERPASS_MIRRORS:
         ox.settings.overpass_url = url
-        ox.settings.requests_timeout = 120
+        ox.settings.requests_timeout = 300  # public servers can take > 2 min on a township bbox
         for _ in range(tries_per_mirror):
             try:
                 return fn()
@@ -39,11 +39,12 @@ def _with_retry(fn, tries_per_mirror: int = 2):
 OPTIONAL = {"landuse", "parking"}
 
 
-def fetch_osm(bbox: list[float]) -> dict[str, Path]:
+def fetch_osm(bbox: list[float], skip_optional: bool = False) -> dict[str, Path]:
     """bbox = [west, south, east, north]. Saves raw layers (EPSG:4326) under data/raw/.
 
     Roads and buildings are required. Land use and car parks are optional: if Overpass is unreachable
-    they are skipped (returned as None) and re-fetched on the next run."""
+    they are skipped (returned as None) and re-fetched on the next run. `skip_optional` skips them without
+    trying, unless already downloaded."""
     import osmnx as ox
 
     RAW.mkdir(parents=True, exist_ok=True)
@@ -66,6 +67,9 @@ def fetch_osm(bbox: list[float]) -> dict[str, Path]:
     }
     for name, tags in layers.items():
         if paths[name].exists():
+            continue
+        if skip_optional and name in OPTIONAL:
+            paths[name] = None
             continue
         import geopandas as gpd
         import pandas as pd

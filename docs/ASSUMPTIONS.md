@@ -2,7 +2,7 @@
 
 _Auto-generated from `config/base.yaml` by `python -m ffsa.cli assumptions`. Do not edit by hand._
 
-18 parameters cite a source, 43 are explicit assumptions, 1 are placeholders that must be sourced before final results.
+18 parameters cite a source, 45 are explicit assumptions, 1 placeholder(s) must be sourced before final results.
 
 ## ⚠ Placeholders (must be sourced)
 
@@ -60,11 +60,13 @@ _Auto-generated from `config/base.yaml` by `python -m ffsa.cli assumptions`. Do 
 | `sensors.noise_sigma_m` | `0.01` | Ultrasonic level-sensor accuracy ~1 cm; to be cited from UTHM / FloodNet specs |
 | `sensors.p_dropout` | `0.0` | No packet loss in the baseline; varied in robustness runs |
 | `sensors.p_blocked` | `0.0` | No stuck sensors in the baseline; varied in robustness runs |
-| `sensors.placement` | `flow_accumulation` | Default strategy; compared with historical/random in Phase 8 |
+| `sensors.placement` | `low_points` | Team decision 2026-10-23: drains at terrain low points (sags, dips, underpasses), where street water collects first; trunk drains (flow_accumulation) never filled on the real BBR map. Compared with flow_accumulation/historical/random in Phase 8 |
+| `sensors.low_point_window_m` | `300` | Neighbourhood used to judge a low point: node ground level vs the mean ground level within a ~300 m square |
 | `sensors.min_spacing_m` | `150` | Spread sensors apart when choosing by flow accumulation |
 | `sensors.max_serve_distance_m` | `600` | A sensor only serves streets within 600 m road distance; farther streets are unserved |
 | `sensors.same_elevation_tol_m` | `0.5` | Serving sensors must be upstream or within 0.5 m of the street's lowest point |
 | `residents.cars_per_household` | `1.5` | Placeholder until a DOSM household figure is supplied (OPEN_QUESTIONS #6) |
+| `residents.park_at` | `street` | BBR terraced houses park on the porch / kerb at road level, so a car's water depth is the road cell in front of the house ('building' = the house's own cell) |
 | `residents.households_per_apartment` | `10` | OSM apartment blocks rarely carry unit counts; 10 households per block as a stand-in |
 | `residents.max_cars` | `3000` | Cap on simulated cars for speed; results are shares so they scale |
 | `residents.response_delay_lognorm.awake_median_min` | `5` | Median time to get keys and reach the car when awake |
@@ -108,4 +110,6 @@ _Auto-generated from `config/base.yaml` by `python -m ffsa.cli assumptions`. Do 
 - DEM: Copernicus GLO-30 DEM (ESA / Airbus, 2021), open AWS bucket, no login
 - Roads, buildings, land use, car parks: OpenStreetMap contributors (ODbL)
 - Outlet: boundary cells in the lowest 10% of boundary elevation (assumption)
+- **Synthetic safe car parks** (assumption, no real list yet): highest road node per 1500 m tile, labelled 'Assumed car park N (synthetic)'
 - Validation street: Jalan Makyong — News reports cited in the proposal: floods ~3 times a year since 2021 (citation to be added by team)
+- **Current BBR build has no OSM landuse, parking** (Overpass unreachable): land cover defaults to residential (C=0.7)

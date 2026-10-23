@@ -17,7 +17,7 @@ import numpy as np
 
 from ffsa.config import ROOT, load_config, load_yaml
 from ffsa.hydro.drains import build_drains
-from ffsa.world import GREEN, RESIDENTIAL, ROAD, ROOF, PROCESSED, World, assign_to_edges, cells_along
+from ffsa.world import GREEN, RESIDENTIAL, ROAD, ROOF, PROCESSED, World, assign_to_edges, cells_along, is_validation_street
 
 RESIDENTIAL_TAGS = {"house", "residential", "terrace", "apartments", "semidetached_house", "detached", "bungalow", "dormitory"}
 APARTMENT_TAGS = {"apartments", "dormitory"}
@@ -150,7 +150,32 @@ def pick_high_ground(world: World, top_fraction: float, max_n: int, min_spacing:
     return chosen
 
 
-def prepare_area(area_path, allow_placeholders: bool = False) -> World:
+def pick_local_high_ground(world: World, tile_m: float, min_spacing: float, taken: list) -> list:
+    """SYNTHETIC safe car parks: in each tile_m x tile_m tile that has roads, the highest road node, if it sits
+    above the tile's median road elevation. Stands in for real multi-storey car parks (OPEN_QUESTIONS #4)."""
+    if not tile_m:
+        return []
+    z = world.dem.ravel()
+    G = world.graph
+    tiles: dict[tuple, list] = {}
+    for n, d in G.nodes(data=True):
+        tiles.setdefault((int((d["x"] - world.x0) // tile_m), int((world.y0 - d["y"]) // tile_m)), []).append(n)
+    xy = lambda n: (G.nodes[n]["x"], G.nodes[n]["y"])
+    chosen = []
+    for key in sorted(tiles):
+        nodes = tiles[key]
+        if len(nodes) < 10:
+            continue
+        zs = np.array([z[G.nodes[n]["cell"]] for n in nodes])
+        best = nodes[int(np.argmax(zs))]
+        if zs.max() <= np.median(zs):
+            continue
+        if all(math.hypot(xy(best)[0] - xy(m)[0], xy(best)[1] - xy(m)[1]) >= min_spacing for m in taken + chosen):
+            chosen.append(best)
+    return chosen
+
+
+def prepare_area(area_path, allow_placeholders: bool = False, skip_optional_osm: bool = False) -> World:
     import geopandas as gpd
 
     from ffsa.data.fetch_dem import fetch_dem
@@ -164,7 +189,7 @@ def prepare_area(area_path, allow_placeholders: bool = False) -> World:
     print("fetching DEM ...")
     dem_path = fetch_dem(area["dem"]["url"], area["bbox"])
     print("fetching OSM ...")
-    osm = fetch_osm(area["bbox"])
+    osm = fetch_osm(area["bbox"], skip_optional=skip_optional_osm)
 
     x0, y0, H, W = make_grid(area["bbox"], crs, cell)
     dem_raw = reproject_dem(dem_path, crs, x0, y0, H, W, cell)
@@ -209,7 +234,7 @@ def prepare_area(area_path, allow_placeholders: bool = False) -> World:
     inside = (cent.x > x0) & (cent.x < x0 + W * cell) & (cent.y < y0) & (cent.y > y0 - H * cell)
     res, cent = res[inside], cent[inside]
     if len(res):
-        eids, nodes = assign_to_edges(world, cent.x.to_numpy(), cent.y.to_numpy())
+        eids, nodes, front = assign_to_edges(world, cent.x.to_numpy(), cent.y.to_numpy(), return_points=True)
         edges = world.edge_by_eid()
         for k, (geom, tag, c) in enumerate(zip(res.geometry, col(res, "building").astype(str), cent)):
             poly = geom if geom.geom_type == "Polygon" else max(geom.geoms, key=lambda g: g.area)
@@ -217,6 +242,7 @@ def prepare_area(area_path, allow_placeholders: bool = False) -> World:
             world.buildings.append({"id": k, "x": float(c.x), "y": float(c.y), "cell": int(world.xy_cell(c.x, c.y)),
                                     "kind": "apartments" if tag in APARTMENT_TAGS else "house",
                                     "street": int(edges[eids[k]][2]["street"]), "node": nodes[k],
+                                    "street_cell": int(world.xy_cell(*front[k])),  # road in front of the house
                                     "polygon": [tuple(p) for p in poly.exterior.coords]})
 
     # safe zones
@@ -242,6 +268,12 @@ def prepare_area(area_path, allow_placeholders: bool = False) -> World:
         nd = world.graph.nodes[n]
         named.append({"name": f"High ground ({world.dem.ravel()[nd['cell']]:.1f} m)", "x": nd["x"], "y": nd["y"],
                       "node": n, "kind": "high ground (DEM)"})
+    syn = area.get("synthetic_car_parks") or {}
+    taken = [s["node"] for s in named]
+    for i, n in enumerate(pick_local_high_ground(world, syn.get("tile_m", 0), syn.get("min_spacing_m", 700), taken), 1):
+        nd = world.graph.nodes[n]
+        named.append({"name": f"Assumed car park {i} (synthetic)", "x": nd["x"], "y": nd["y"],
+                      "node": n, "kind": "synthetic (assumed)"})
     world.safe_zones = [{"id": i, **s} for i, s in enumerate(named)]
 
     # outlet: lowest boundary cells
@@ -315,10 +347,9 @@ def overlay_png(world: World, path):
     for b in world.buildings:
         p = np.asarray(b["polygon"])
         ax.fill(p[:, 0], p[:, 1], color="#555", lw=0, alpha=0.5)
-    val = set(world.validation_streets)
     for u, v, d in world.graph.edges(data=True):
         c = np.asarray(d["coords"])
-        hit = d["name"] in val
+        hit = is_validation_street(d["name"], world.validation_streets)
         ax.plot(c[:, 0], c[:, 1], color="#e63946" if hit else "#222", lw=2.5 if hit else 0.7)
     dx, dy = world.cell_xy(world.drains.cell)
     ax.scatter(dx, dy, s=4, c="#1d4ed8", label="drain nodes", zorder=3)

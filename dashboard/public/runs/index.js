@@ -1,1 +1,1 @@
-window.FFSA_RUN_INDEX = [{"run_id": "toy_toy_storm_seed1", "world": "toy", "storm": "toy_storm", "storm_synthetic": true, "world_synthetic": true, "scenarios": ["S0", "S1", "S2", "S3"]}];
+window.FFSA_RUN_INDEX = [{"run_id": "bbr_design_storm_PLACEHOLDER_seed1", "world": "bbr", "storm": "design_storm_PLACEHOLDER", "storm_synthetic": true, "world_synthetic": false, "scenarios": ["S0", "S1", "S2", "S3"]}, {"run_id": "toy_toy_storm_seed1", "world": "toy", "storm": "toy_storm", "storm_synthetic": true, "world_synthetic": true, "scenarios": ["S0", "S1", "S2", "S3"]}];
